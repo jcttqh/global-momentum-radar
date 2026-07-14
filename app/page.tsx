@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 
-type Tab = "overview" | "news" | "pool" | "formula";
+type Tab = "overview" | "news" | "pool" | "reports" | "formula";
 type Asset = { symbol:string; name:string; v4:number; v4Decision:string; v5:number; v5Decision:string; momentum:number; drawdown:number; strength:number };
 type News = { title:string; summary:string; source:string; time:string; url:string; sentiment:string };
+type Report = { symbol:string; name:string; category:"基金研报" | "股票研报"; theme:string; href:string };
 
 const assets: Asset[] = [
   {symbol:"512010",name:"医药 ETF",v4:86.6,v4Decision:"入选",v5:87.5,v5Decision:"入选",momentum:90,drawdown:90,strength:80},
@@ -26,7 +27,19 @@ const seedNews: News[] = [
   {title:"午间收评：科创50指数调整，医药与油气逆势活跃",summary:"市场早间冲高回落，板块分化明显，半导体芯片股持续调整。",source:"华尔街见闻",time:"2026-07-14",url:"https://wallstreetcn.com/livenews/3133292",sentiment:"偏空"},
 ];
 
-const tabs: {id:Tab; label:string}[] = [{id:"overview",label:"策略总览"},{id:"news",label:"每日新闻"},{id:"pool",label:"候选池"},{id:"formula",label:"指标公式"}];
+const reports: Report[] = [
+  {symbol:"001475",name:"易方达国防军工混合A",category:"基金研报",theme:"国防军工",href:"/reports/funds/001475-20260715.html"},
+  {symbol:"011609",name:"易方达上证科创50ETF联接C",category:"基金研报",theme:"科创50",href:"/reports/funds/011609-20260715.html"},
+  {symbol:"003096",name:"中欧医疗健康混合C",category:"基金研报",theme:"医疗健康",href:"/reports/funds/003096-20260715.html"},
+  {symbol:"161032",name:"富国中证煤炭指数A",category:"基金研报",theme:"煤炭指数",href:"/reports/funds/161032-20260715.html"},
+  {symbol:"002008",name:"大族激光",category:"股票研报",theme:"激光设备",href:"/reports/stocks/002008-20260715.html"},
+  {symbol:"300502",name:"新易盛",category:"股票研报",theme:"光通信",href:"/reports/stocks/300502-20260715.html"},
+  {symbol:"300750",name:"宁德时代",category:"股票研报",theme:"动力电池",href:"/reports/stocks/300750-20260715.html"},
+  {symbol:"601985",name:"中国核电",category:"股票研报",theme:"核电运营",href:"/reports/stocks/601985-20260715.html"},
+  {symbol:"601088",name:"中国神华",category:"股票研报",theme:"煤炭能源",href:"/reports/stocks/china-shenhua-601088-20260715.html"},
+];
+
+const tabs: {id:Tab; label:string}[] = [{id:"overview",label:"策略总览"},{id:"news",label:"每日新闻"},{id:"pool",label:"候选池"},{id:"reports",label:"研报中心"},{id:"formula",label:"指标公式"}];
 
 function Badge({value}:{value:string}) { return <span className={`badge ${value === "入选" || value === "偏多" ? "good" : value === "淘汰" || value === "偏空" ? "bad" : ""}`}>{value}</span> }
 
@@ -60,6 +73,8 @@ export default function Home() {
 
     {tab === "pool" && <div className="stack"><section className="panel page-head"><div><p className="eyebrow">CANDIDATE ARCHIVE</p><h1>候选池</h1><p className="muted">查看 V4 与实验版 V5 的同期差异。</p></div><div className="news-stat"><strong>11</strong><span>观察标的</span><small>最近有效快照</small></div></section><Ranking items={assets}/></div>}
 
+    {tab === "reports" && <div className="stack"><section className="panel page-head report-head"><div><p className="eyebrow">RESEARCH LIBRARY</p><h1>研报中心</h1><p className="muted">基金与股票研究简报统一归档，点击卡片可在新窗口阅读全文。</p></div><div className="report-stats"><span><strong>9</strong><small>份研报</small></span><span><strong>4</strong><small>只基金</small></span><span><strong>5</strong><small>只股票</small></span></div></section><ReportGroup title="基金研报" label="FUNDS / 4" items={reports.filter(x=>x.category==="基金研报")}/><ReportGroup title="股票研报" label="STOCKS / 5" items={reports.filter(x=>x.category==="股票研报")}/></div>}
+
     {tab === "formula" && <div className="stack"><section className="panel page-head"><div><p className="eyebrow">SCORING MODEL</p><h1>评分机制</h1><p className="muted">V4 正式对照，V5 实验观察。评分仅用于研究，不构成投资建议。</p></div><div className="news-stat accent"><strong>55</strong><span>V5 入选线</span><small>实验版</small></div></section><section className="formula-grid"><Formula n="01" title="动量" text="最近 5 个交易日的 20 日收益率均值，转换为候选池内百分位。" weight="45%"/><Formula n="02" title="回撤" text="最近 5 个交易日距 20 日高点回撤均值，回撤越小得分越高。" weight="30%"/><Formula n="03" title="强度" text="10 日趋势相对 20 日趋势的增强程度，经 5 日平滑后计算百分位。" weight="25%"/></section></div>}
 
     <footer>数据快照：2026-07-14 · 同花顺 iFind · V5 尚未经过实盘验证</footer>
@@ -69,3 +84,4 @@ export default function Home() {
 function Ranking({items}:{items:Asset[]}) { return <section className="panel ranking"><div className="section-title"><div><p className="eyebrow">RANKING</p><h2>候选池排名</h2></div><span>V4 / V5</span></div><div className="table"><div className="tr head"><span>代码 / 名称</span><span>V4</span><span>状态</span><span>V5</span><span>状态</span></div>{items.map(x=><div className="tr" key={x.symbol}><span><code>{x.symbol}</code><b>{x.name}</b></span><strong>{x.v4.toFixed(1)}</strong><Badge value={x.v4Decision}/><strong className={x.v5>=55?"green":"red"}>{x.v5.toFixed(1)}</strong><Badge value={x.v5Decision}/></div>)}</div></section> }
 function Factor({name,value}:{name:string;value:number}) { return <article><span>{name}</span><strong>{value}</strong><div className="bar"><i style={{width:`${value}%`}}/></div><small>V5 百分位</small></article> }
 function Formula({n,title,text,weight}:{n:string;title:string;text:string;weight:string}) { return <article className="panel formula"><span>{n}</span><b>{weight}</b><h2>{title}</h2><p>{text}</p></article> }
+function ReportGroup({title,label,items}:{title:string;label:string;items:Report[]}) { return <section className="panel report-section"><div className="section-title"><div><p className="eyebrow">{label}</p><h2>{title}</h2></div><span>更新于 2026-07-15</span></div><div className="report-grid">{items.map(item=><a className="report-card" href={item.href} target="_blank" rel="noreferrer" key={item.symbol}><div className="report-card-top"><code>{item.symbol}</code><span>{item.theme}</span></div><h3>{item.name}</h3><p>{item.category} · 2026-07-15</p><b>阅读全文 <i>↗</i></b></a>)}</div></section> }
