@@ -1,0 +1,52 @@
+name: Publish momentum radar
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Preserve the last published news snapshot
+        continue-on-error: true
+        run: curl --fail --silent --show-error "https://jcttqh.github.io/global-momentum-radar/data/news.json" --output public-github/data/news.json
+      - name: Refresh same-day news
+        continue-on-error: true
+        env:
+          IFIND_NEWS_URL: ${{ secrets.IFIND_NEWS_URL }}
+          IFIND_AUTHORIZATION: ${{ secrets.IFIND_AUTHORIZATION }}
+        run: node scripts/fetch-news.mjs
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp -R public-github/. _site/
+          cp app/globals.css _site/styles.css
+          cp public/og-momentum-radar.png public/favicon.svg _site/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -34,3 +34,14 @@ npm run db:generate
 ```
 
 数据库迁移位于 `drizzle/`，D1 绑定名为 `DB`。
+
+## GitHub Pages 分享版
+
+`public-github/` 是可直接公开托管的响应式只读页面。`.github/workflows/pages.yml` 每小时调用一次 iFind 新闻 MCP，优先保留上次发布的有效快照，再部署到 GitHub Pages。
+
+iFind 配置必须保存为仓库 Secrets：
+
+- `IFIND_NEWS_URL`
+- `IFIND_AUTHORIZATION`
+
+任何密钥都不应写入 `public-github/` 或 Git 历史。
