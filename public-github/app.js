@@ -11,7 +11,8 @@ let assets=[
   ["512100","中证1000 ETF",38.6,"淘汰",20.5,"淘汰",10,20,40],
   ["515790","光伏 ETF",21.9,"淘汰",7.5,"淘汰",0,0,30]
 ];
-let marketMeta={updatedAt:"2026-07-14",status:"内置快照",selectedCount:6,rejectedCount:5,v5SelectedCount:7};
+let marketMeta={updatedAt:"2026-07-14",status:"内置快照",market:"cn",preset:"balanced",selectedCount:6,rejectedCount:5,v5SelectedCount:7};
+let snapshotData=null,activeMarket="cn",activePreset="balanced",newsByMarket={};
 const fallbackNews=[
   {title:"涨超2.5%，科创价值ETF华夏盘中上涨2.50%",summary:"科创价值指数成分股涨跌互现，ETF盘中活跃，近一个月累计表现受到市场关注。",source:"同花顺 iFind",time:"2026-07-14",url:"https://aigc.ylaigc.com/yly-boot/saas/common/previewConsultingById?id=6203427",sentiment:"中性"},
   {title:"科创创业ETF易方达融资净买入1531.76万元",summary:"杠杆资金连续流入，融资净买入规模居可比基金前列。",source:"同花顺 iFind",time:"2026-07-14",url:"https://aigc.ylaigc.com/yly-boot/saas/common/previewConsultingById?id=6203500",sentiment:"偏多"},
@@ -35,25 +36,46 @@ const safeUrl=value=>{try{const parsed=new URL(value);return ["http:","https:"].
 const badge=v=>`<span class="badge ${v==="入选"||v==="偏多"?"good":v==="淘汰"||v==="偏空"?"bad":""}">${esc(v)}</span>`;
 const ranking=items=>`<section class="panel ranking"><div class="section-title"><div><p class="eyebrow">RANKING</p><h2>候选池排名</h2></div><span>V4 / V5</span></div><div class="table"><div class="tr head"><span>代码 / 名称</span><span>V4</span><span>状态</span><span>V5</span><span>状态</span></div>${items.map(x=>`<div class="tr"><span><code>${x[0]}</code><b>${x[1]}</b></span><strong>${x[2].toFixed(1)}</strong>${badge(x[3])}<strong class="${x[4]>=55?"green":"red"}">${x[4].toFixed(1)}</strong>${badge(x[5])}</div>`).join("")}</div></section>`;
 const factor=(name,value)=>`<article><span>${name}</span><strong>${value}</strong><div class="bar"><i style="width:${value}%"></i></div><small>V5 百分位</small></article>`;
+const marketLabels={cn:"A股",hk:"港股",us:"美股"};
+const presetLabels={balanced:"平衡型",momentum:"强趋势",defensive:"防守型"};
+const availablePresets=market=>snapshotData?Object.keys(snapshotData).filter(key=>key.startsWith(`${market}:`)).map(key=>key.split(":")[1]):["balanced"];
+const snapshotControls=()=>`<section class="panel snapshot-controls"><div><span>公开快照</span><strong>${marketLabels[activeMarket]||activeMarket} · ${presetLabels[activePreset]||activePreset}</strong><small>${String(marketMeta.updatedAt||"").replace("T"," ").slice(0,16)}</small></div><label>市场<select data-snapshot-market>${Object.keys(marketLabels).filter(market=>availablePresets(market).length).map(market=>`<option value="${market}" ${market===activeMarket?"selected":""}>${marketLabels[market]}</option>`).join("")}</select></label><label>权重<select data-snapshot-preset>${availablePresets(activeMarket).map(preset=>`<option value="${preset}" ${preset===activePreset?"selected":""}>${presetLabels[preset]||preset}</option>`).join("")}</select></label></section>`;
+function applyCurrentSnapshot(){
+  if(!snapshotData)return;
+  let snapshot=snapshotData[`${activeMarket}:${activePreset}`];
+  if(!snapshot){activePreset=availablePresets(activeMarket).includes("balanced")?"balanced":availablePresets(activeMarket)[0];snapshot=snapshotData[`${activeMarket}:${activePreset}`]}
+  if(!snapshot?.items?.length)return;
+  assets=snapshot.items.map(x=>[String(x.symbol||""),x.name||"未命名",Number(x.finalScore||0),x.decision||"观察",Number(x.v5FinalScore||0),x.v5Decision||"观察",Number(x.v5MomentumScore??x.momentumScore??0),Number(x.v5DrawdownScore??x.drawdownScore??0),Number(x.v5StrengthScore??x.strengthScore??0)]);
+  marketMeta={...snapshot,status:"本地自动同步"};
+  const marketNews=newsByMarket[activeMarket];
+  if(marketNews?.items?.length){news=marketNews.items;newsMeta={updatedAt:marketNews.updatedAt,status:marketNews.status||"本地自动同步"}}
+  const footer=document.querySelector("footer");
+  if(footer)footer.textContent=`数据快照：${String(marketMeta.updatedAt).slice(0,10)} · ${marketLabels[activeMarket]||activeMarket} · 本地自动同步 · V5 尚未经过实盘验证`;
+}
 const reportGroup=(title,label,items)=>`<section class="panel report-section"><div class="section-title"><div><p class="eyebrow">${label}</p><h2>${title}</h2></div><span>更新于 2026-07-15</span></div><div class="report-grid">${items.map(x=>`<a class="report-card" href="${x[4]}" target="_blank" rel="noreferrer"><div class="report-card-top"><code>${x[0]}</code><span>${x[3]}</span></div><h3>${x[1]}</h3><p>${x[2]} · 2026-07-15</p><b>阅读全文 <i>↗</i></b></a>`).join("")}</div></section>`;
 const renderers={
-  overview:()=>`<div class="grid"><section class="panel hero"><div><p class="eyebrow">WEEKLY MOMENTUM / 周度信号</p><h1>本周动量信号</h1><div class="counts"><strong>${marketMeta.selectedCount}</strong><span>V4 入选</span><em>·</em><strong>${marketMeta.v5SelectedCount}</strong><span>V5 入选</span></div><p class="muted">${marketMeta.status} · V5 为三因子百分位实验版，55 分入选。</p></div><div class="radar"><span></span><span></span><span></span><span></span><b></b></div></section><section class="panel score-card"><p class="eyebrow">V4 / V5 PARALLEL</p><h2>双版本观察</h2><div class="big-score">${Number(assets[0]?.[4]||0).toFixed(1)}</div><p>V5 最高分 · ${esc(assets[0]?.[1]||"暂无数据")}</p><div class="mini-factors"><span>动量 ${Number(assets[0]?.[6]||0).toFixed(0)}</span><span>回撤 ${Number(assets[0]?.[7]||0).toFixed(0)}</span><span>强度 ${Number(assets[0]?.[8]||0).toFixed(0)}</span></div></section>${ranking(assets.slice(0,7))}<section class="panel factors">${factor("动量",Number(assets[0]?.[6]||0).toFixed(0))}${factor("回撤",Number(assets[0]?.[7]||0).toFixed(0))}${factor("强度",Number(assets[0]?.[8]||0).toFixed(0))}</section></div>`,
-  news:()=>`<div class="news-layout"><section class="panel page-head"><div><p class="eyebrow">DAILY MARKET BRIEF</p><h1>今日新闻雷达</h1><p class="muted">优先显示当天资讯，每条均标注发布时间并链接原文。</p></div><div class="news-stat"><strong>${news.length}</strong><span>条重点资讯</span><small>${esc(newsMeta.status)}</small></div></section><section class="panel feed">${news.map((x,i)=>`<article class="news-item"><span class="num">${String(i+1).padStart(2,"0")}</span><div><div class="meta">${badge(x.sentiment)}<span>${esc(x.source||"同花顺 iFind")}</span><time>发布时间：${esc(x.time||"未提供")}</time></div><h2><a href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">${esc(x.title)}</a></h2><p>${esc(x.summary||"暂无摘要")}</p></div><a class="out" href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">↗</a></article>`).join("")}</section></div>`,
-  pool:()=>`<div class="stack"><section class="panel page-head"><div><p class="eyebrow">CANDIDATE ARCHIVE</p><h1>候选池</h1><p class="muted">查看 V4 与实验版 V5 的同期差异。</p></div><div class="news-stat"><strong>11</strong><span>观察标的</span><small>最近有效快照</small></div></section>${ranking(assets)}</div>`,
+  overview:()=>`<div class="grid">${snapshotControls()}<section class="panel hero"><div><p class="eyebrow">WEEKLY MOMENTUM / 周度信号</p><h1>本周动量信号</h1><div class="counts"><strong>${marketMeta.selectedCount}</strong><span>V4 入选</span><em>·</em><strong>${marketMeta.v5SelectedCount}</strong><span>V5 入选</span></div><p class="muted">${marketMeta.status} · V5 为三因子百分位实验版，55 分入选。</p></div><div class="radar"><span></span><span></span><span></span><span></span><b></b></div></section><section class="panel score-card"><p class="eyebrow">V4 / V5 PARALLEL</p><h2>双版本观察</h2><div class="big-score">${Number(assets[0]?.[4]||0).toFixed(1)}</div><p>V5 最高分 · ${esc(assets[0]?.[1]||"暂无数据")}</p><div class="mini-factors"><span>动量 ${Number(assets[0]?.[6]||0).toFixed(0)}</span><span>回撤 ${Number(assets[0]?.[7]||0).toFixed(0)}</span><span>强度 ${Number(assets[0]?.[8]||0).toFixed(0)}</span></div></section>${ranking(assets.slice(0,7))}<section class="panel factors">${factor("动量",Number(assets[0]?.[6]||0).toFixed(0))}${factor("回撤",Number(assets[0]?.[7]||0).toFixed(0))}${factor("强度",Number(assets[0]?.[8]||0).toFixed(0))}</section></div>`,
+  news:()=>`<div class="news-layout">${snapshotControls()}<section class="panel page-head"><div><p class="eyebrow">DAILY MARKET BRIEF</p><h1>今日新闻雷达</h1><p class="muted">优先显示当天资讯，每条均标注发布时间并链接原文。</p></div><div class="news-stat"><strong>${news.length}</strong><span>条重点资讯</span><small>${esc(newsMeta.status)}</small></div></section><section class="panel feed">${news.map((x,i)=>`<article class="news-item"><span class="num">${String(i+1).padStart(2,"0")}</span><div><div class="meta">${badge(x.sentiment)}<span>${esc(x.source||"同花顺 iFind")}</span><time>发布时间：${esc(x.time||"未提供")}</time></div><h2><a href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">${esc(x.title)}</a></h2><p>${esc(x.summary||"暂无摘要")}</p></div><a class="out" href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">↗</a></article>`).join("")}</section></div>`,
+  pool:()=>`<div class="stack">${snapshotControls()}<section class="panel page-head"><div><p class="eyebrow">CANDIDATE ARCHIVE</p><h1>候选池</h1><p class="muted">查看 V4 与实验版 V5 的同期差异。</p></div><div class="news-stat"><strong>${assets.length}</strong><span>观察标的</span><small>最近有效快照</small></div></section>${ranking(assets)}</div>`,
   reports:()=>`<div class="stack"><section class="panel page-head report-head"><div><p class="eyebrow">RESEARCH LIBRARY</p><h1>研报中心</h1><p class="muted">基金与股票研究简报统一归档，点击卡片可在新窗口阅读全文。</p></div><div class="report-stats"><span><strong>9</strong><small>份研报</small></span><span><strong>4</strong><small>只基金</small></span><span><strong>5</strong><small>只股票</small></span></div></section>${reportGroup("基金研报","FUNDS / 4",reports.filter(x=>x[2]==="基金研报"))}${reportGroup("股票研报","STOCKS / 5",reports.filter(x=>x[2]==="股票研报"))}</div>`,
   formula:()=>`<div class="stack"><section class="panel page-head"><div><p class="eyebrow">SCORING MODEL</p><h1>评分机制</h1><p class="muted">V4 正式对照，V5 实验观察。评分仅用于研究，不构成投资建议。</p></div><div class="news-stat accent"><strong>55</strong><span>V5 入选线</span><small>实验版</small></div></section><section class="formula-grid">${[["01","动量","最近 5 个交易日的 20 日收益率均值，转换为候选池内百分位。","45%"],["02","回撤","最近 5 个交易日距 20 日高点回撤均值，回撤越小得分越高。","30%"],["03","强度","10 日趋势相对 20 日趋势的增强程度，经 5 日平滑后计算百分位。","25%"]].map(x=>`<article class="panel formula"><span>${x[0]}</span><b>${x[3]}</b><h2>${x[1]}</h2><p>${x[2]}</p></article>`).join("")}</section></div>`
 };
 function show(tab){document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));content.innerHTML=renderers[tab]();window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-tab]").forEach(x=>x.addEventListener("click",()=>show(x.dataset.tab)));
+content.addEventListener("change",event=>{
+  if(event.target.matches("[data-snapshot-market]")){activeMarket=event.target.value;activePreset=availablePresets(activeMarket).includes("balanced")?"balanced":availablePresets(activeMarket)[0]}
+  else if(event.target.matches("[data-snapshot-preset]")){activePreset=event.target.value}else{return}
+  applyCurrentSnapshot();
+  const active=document.querySelector("[data-tab].active")?.dataset.tab||"overview";
+  show(active);
+});
 fetch("./data/market.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{
   if(data.items?.length){
-    assets=data.items.map(x=>[String(x.symbol||""),x.name||"未命名",Number(x.finalScore||0),x.decision||"观察",Number(x.v5FinalScore||0),x.v5Decision||"观察",Number(x.v5MomentumScore??x.momentumScore??0),Number(x.v5DrawdownScore??x.drawdownScore??0),Number(x.v5StrengthScore??x.strengthScore??0)]);
-    marketMeta={updatedAt:data.updatedAt||"未提供",status:data.status||"本地同步快照",selectedCount:Number(data.selectedCount||0),rejectedCount:Number(data.rejectedCount||0),v5SelectedCount:Number(data.v5SelectedCount||0)};
-    const footer=document.querySelector("footer");
-    if(footer)footer.textContent=`数据快照：${String(marketMeta.updatedAt).slice(0,10)} · 本地自动同步 · 同花顺 iFind · V5 尚未经过实盘验证`;
+    snapshotData=data.snapshots||{[data.defaultKey||"cn:balanced"]:data};
+    applyCurrentSnapshot();
     if(document.querySelector('[data-tab="overview"].active'))show("overview");
     if(document.querySelector('[data-tab="pool"].active'))show("pool");
   }
 }).catch(()=>{});
-fetch("./data/news.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(data.items?.length)news=data.items;newsMeta={updatedAt:data.updatedAt,status:data.status||"定时更新"};if(document.querySelector('[data-tab="news"].active'))show("news");}).catch(()=>{});
+fetch("./data/news.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{newsByMarket=data.markets||{cn:data};const selected=newsByMarket[activeMarket]||data;if(selected.items?.length)news=selected.items;newsMeta={updatedAt:selected.updatedAt,status:selected.status||"定时更新"};if(document.querySelector('[data-tab="news"].active'))show("news");}).catch(()=>{});
 show("overview");

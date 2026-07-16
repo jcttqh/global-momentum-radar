@@ -29,6 +29,11 @@ test("loads the GitHub Pages ranking from the local exported snapshot", async ()
   assert.equal(payload.market, "cn");
   assert.equal(payload.preset, "balanced");
   assert.equal(payload.items.length, 11);
+  assert.equal(payload.schemaVersion, 2);
+  assert.ok(payload.snapshots["cn:balanced"]);
+  assert.ok(payload.snapshots["hk:balanced"]);
+  assert.ok(payload.snapshots["us:balanced"]);
+  assert.match(app, /data-snapshot-market/);
   assert.ok(payload.items.every((item) => "finalScore" in item && "v5FinalScore" in item));
 });
 
