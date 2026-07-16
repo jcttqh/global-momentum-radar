@@ -19,6 +19,19 @@ test("publishes every fund and stock report", async () => {
   }
 });
 
+test("loads the GitHub Pages ranking from the local exported snapshot", async () => {
+  const [app, market] = await Promise.all([
+    readFile(new URL("public-github/app.js", root), "utf8"),
+    readFile(new URL("public-github/data/market.json", root), "utf8"),
+  ]);
+  const payload = JSON.parse(market);
+  assert.match(app, /data\/market\.json/);
+  assert.equal(payload.market, "cn");
+  assert.equal(payload.preset, "balanced");
+  assert.equal(payload.items.length, 11);
+  assert.ok(payload.items.every((item) => "finalScore" in item && "v5FinalScore" in item));
+});
+
 test("keeps iFind credentials on the server", async () => {
   const [page, route] = await Promise.all([
     readFile(new URL("app/page.tsx", root), "utf8"),

@@ -1,4 +1,4 @@
-const assets=[
+let assets=[
   ["512010","医药 ETF",86.6,"入选",87.5,"入选",90,90,80],
   ["513130","恒生科技 ETF",77,"入选",82,"入选",60,100,100],
   ["588000","科创50 ETF",70.7,"入选",57,"入选",100,40,0],
@@ -11,6 +11,7 @@ const assets=[
   ["512100","中证1000 ETF",38.6,"淘汰",20.5,"淘汰",10,20,40],
   ["515790","光伏 ETF",21.9,"淘汰",7.5,"淘汰",0,0,30]
 ];
+let marketMeta={updatedAt:"2026-07-14",status:"内置快照",selectedCount:6,rejectedCount:5,v5SelectedCount:7};
 const fallbackNews=[
   {title:"涨超2.5%，科创价值ETF华夏盘中上涨2.50%",summary:"科创价值指数成分股涨跌互现，ETF盘中活跃，近一个月累计表现受到市场关注。",source:"同花顺 iFind",time:"2026-07-14",url:"https://aigc.ylaigc.com/yly-boot/saas/common/previewConsultingById?id=6203427",sentiment:"中性"},
   {title:"科创创业ETF易方达融资净买入1531.76万元",summary:"杠杆资金连续流入，融资净买入规模居可比基金前列。",source:"同花顺 iFind",time:"2026-07-14",url:"https://aigc.ylaigc.com/yly-boot/saas/common/previewConsultingById?id=6203500",sentiment:"偏多"},
@@ -36,7 +37,7 @@ const ranking=items=>`<section class="panel ranking"><div class="section-title">
 const factor=(name,value)=>`<article><span>${name}</span><strong>${value}</strong><div class="bar"><i style="width:${value}%"></i></div><small>V5 百分位</small></article>`;
 const reportGroup=(title,label,items)=>`<section class="panel report-section"><div class="section-title"><div><p class="eyebrow">${label}</p><h2>${title}</h2></div><span>更新于 2026-07-15</span></div><div class="report-grid">${items.map(x=>`<a class="report-card" href="${x[4]}" target="_blank" rel="noreferrer"><div class="report-card-top"><code>${x[0]}</code><span>${x[3]}</span></div><h3>${x[1]}</h3><p>${x[2]} · 2026-07-15</p><b>阅读全文 <i>↗</i></b></a>`).join("")}</div></section>`;
 const renderers={
-  overview:()=>`<div class="grid"><section class="panel hero"><div><p class="eyebrow">WEEKLY MOMENTUM / 周度信号</p><h1>本周动量信号</h1><div class="counts"><strong>6</strong><span>V4 入选</span><em>·</em><strong>7</strong><span>V5 入选</span></div><p class="muted">V5 为三因子百分位实验版，55 分入选；每周三更新。</p></div><div class="radar"><span></span><span></span><span></span><span></span><b></b></div></section><section class="panel score-card"><p class="eyebrow">V4 / V5 PARALLEL</p><h2>双版本观察</h2><div class="big-score">87.5</div><p>V5 最高分 · 医药 ETF</p><div class="mini-factors"><span>动量 90</span><span>回撤 90</span><span>强度 80</span></div></section>${ranking(assets.slice(0,7))}<section class="panel factors">${factor("动量",90)}${factor("回撤",90)}${factor("强度",80)}</section></div>`,
+  overview:()=>`<div class="grid"><section class="panel hero"><div><p class="eyebrow">WEEKLY MOMENTUM / 周度信号</p><h1>本周动量信号</h1><div class="counts"><strong>${marketMeta.selectedCount}</strong><span>V4 入选</span><em>·</em><strong>${marketMeta.v5SelectedCount}</strong><span>V5 入选</span></div><p class="muted">${marketMeta.status} · V5 为三因子百分位实验版，55 分入选。</p></div><div class="radar"><span></span><span></span><span></span><span></span><b></b></div></section><section class="panel score-card"><p class="eyebrow">V4 / V5 PARALLEL</p><h2>双版本观察</h2><div class="big-score">${Number(assets[0]?.[4]||0).toFixed(1)}</div><p>V5 最高分 · ${esc(assets[0]?.[1]||"暂无数据")}</p><div class="mini-factors"><span>动量 ${Number(assets[0]?.[6]||0).toFixed(0)}</span><span>回撤 ${Number(assets[0]?.[7]||0).toFixed(0)}</span><span>强度 ${Number(assets[0]?.[8]||0).toFixed(0)}</span></div></section>${ranking(assets.slice(0,7))}<section class="panel factors">${factor("动量",Number(assets[0]?.[6]||0).toFixed(0))}${factor("回撤",Number(assets[0]?.[7]||0).toFixed(0))}${factor("强度",Number(assets[0]?.[8]||0).toFixed(0))}</section></div>`,
   news:()=>`<div class="news-layout"><section class="panel page-head"><div><p class="eyebrow">DAILY MARKET BRIEF</p><h1>今日新闻雷达</h1><p class="muted">优先显示当天资讯，每条均标注发布时间并链接原文。</p></div><div class="news-stat"><strong>${news.length}</strong><span>条重点资讯</span><small>${esc(newsMeta.status)}</small></div></section><section class="panel feed">${news.map((x,i)=>`<article class="news-item"><span class="num">${String(i+1).padStart(2,"0")}</span><div><div class="meta">${badge(x.sentiment)}<span>${esc(x.source||"同花顺 iFind")}</span><time>发布时间：${esc(x.time||"未提供")}</time></div><h2><a href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">${esc(x.title)}</a></h2><p>${esc(x.summary||"暂无摘要")}</p></div><a class="out" href="${safeUrl(x.url)}" target="_blank" rel="noreferrer">↗</a></article>`).join("")}</section></div>`,
   pool:()=>`<div class="stack"><section class="panel page-head"><div><p class="eyebrow">CANDIDATE ARCHIVE</p><h1>候选池</h1><p class="muted">查看 V4 与实验版 V5 的同期差异。</p></div><div class="news-stat"><strong>11</strong><span>观察标的</span><small>最近有效快照</small></div></section>${ranking(assets)}</div>`,
   reports:()=>`<div class="stack"><section class="panel page-head report-head"><div><p class="eyebrow">RESEARCH LIBRARY</p><h1>研报中心</h1><p class="muted">基金与股票研究简报统一归档，点击卡片可在新窗口阅读全文。</p></div><div class="report-stats"><span><strong>9</strong><small>份研报</small></span><span><strong>4</strong><small>只基金</small></span><span><strong>5</strong><small>只股票</small></span></div></section>${reportGroup("基金研报","FUNDS / 4",reports.filter(x=>x[2]==="基金研报"))}${reportGroup("股票研报","STOCKS / 5",reports.filter(x=>x[2]==="股票研报"))}</div>`,
@@ -44,5 +45,15 @@ const renderers={
 };
 function show(tab){document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));content.innerHTML=renderers[tab]();window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-tab]").forEach(x=>x.addEventListener("click",()=>show(x.dataset.tab)));
+fetch("./data/market.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{
+  if(data.items?.length){
+    assets=data.items.map(x=>[String(x.symbol||""),x.name||"未命名",Number(x.finalScore||0),x.decision||"观察",Number(x.v5FinalScore||0),x.v5Decision||"观察",Number(x.v5MomentumScore??x.momentumScore??0),Number(x.v5DrawdownScore??x.drawdownScore??0),Number(x.v5StrengthScore??x.strengthScore??0)]);
+    marketMeta={updatedAt:data.updatedAt||"未提供",status:data.status||"本地同步快照",selectedCount:Number(data.selectedCount||0),rejectedCount:Number(data.rejectedCount||0),v5SelectedCount:Number(data.v5SelectedCount||0)};
+    const footer=document.querySelector("footer");
+    if(footer)footer.textContent=`数据快照：${String(marketMeta.updatedAt).slice(0,10)} · 本地自动同步 · 同花顺 iFind · V5 尚未经过实盘验证`;
+    if(document.querySelector('[data-tab="overview"].active'))show("overview");
+    if(document.querySelector('[data-tab="pool"].active'))show("pool");
+  }
+}).catch(()=>{});
 fetch("./data/news.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{if(data.items?.length)news=data.items;newsMeta={updatedAt:data.updatedAt,status:data.status||"定时更新"};if(document.querySelector('[data-tab="news"].active'))show("news");}).catch(()=>{});
 show("overview");

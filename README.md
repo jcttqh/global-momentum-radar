@@ -39,6 +39,8 @@ npm run db:generate
 
 `public-github/` 是可直接公开托管的响应式只读页面。`.github/workflows/pages.yml` 每小时调用一次 iFind 新闻 MCP，优先保留上次发布的有效快照，再部署到 GitHub Pages。
 
+本地分析 App 点击“更新行情”或“更新新闻”后，会通过项目根目录的 `sync_github_pages.py` 导出最新 `market.json` 与 `news.json`，并自动提交到本仓库。GitHub Pages 的策略总览和候选池会优先读取这份本地快照。
+
 iFind 配置必须保存为仓库 Secrets：
 
 - `IFIND_NEWS_URL`
