@@ -27,9 +27,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Preserve the last published news snapshot
-        continue-on-error: true
-        run: curl --fail --silent --show-error "https://jcttqh.github.io/global-momentum-radar/data/news.json" --output public-github/data/news.json
       - name: Refresh same-day news
         continue-on-error: true
         env:

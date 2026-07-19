@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const output = new URL("../public-github/data/news.json", import.meta.url);
 const url = process.env.IFIND_NEWS_URL;
@@ -39,5 +39,12 @@ if (!items.length) {
   console.log("No same-day news; keeping the last valid snapshot.");
   process.exit(0);
 }
-await writeFile(output, `${JSON.stringify({ updatedAt: new Date().toISOString(), status: "今日定时更新", items }, null, 2)}\n`);
+let existing = {};
+try {
+  existing = JSON.parse(await readFile(output, "utf8"));
+} catch {}
+const cnSnapshot = { updatedAt: new Date().toISOString(), status: "今日定时更新", items };
+const existingMarkets = existing.markets || (existing.items?.length ? { cn: { updatedAt: existing.updatedAt, status: existing.status, items: existing.items } } : {});
+const payload = { ...cnSnapshot, schemaVersion: 2, markets: { ...existingMarkets, cn: cnSnapshot } };
+await writeFile(output, `${JSON.stringify(payload, null, 2)}\n`);
 console.log(`Saved ${items.length} news items for ${today}.`);
