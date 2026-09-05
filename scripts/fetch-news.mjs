@@ -34,6 +34,7 @@ const items = rows.filter(row => row["资讯标题"]).slice(0, 8).map(row => ({
   time: row["发布时间"] || row["日期"] || today,
   url: row.URL || row.url || "",
   sentiment: scoreSentiment(`${row["资讯标题"]} ${row["资讯内容"] || ""}`),
+  category: "市场",
 }));
 if (!items.length) {
   console.log("No same-day news; keeping the last valid snapshot.");
@@ -43,7 +44,10 @@ let existing = {};
 try {
   existing = JSON.parse(await readFile(output, "utf8"));
 } catch {}
-const cnSnapshot = { updatedAt: new Date().toISOString(), status: "今日定时更新", items };
+const researchItems = (existing.markets?.cn?.items || existing.items || []).filter(item => ["政策","宏观","行业"].includes(item.category) && Date.now()-Date.parse(item.time) < 31*86400000);
+const seen = new Set();
+const combined = [...items, ...researchItems].filter(item => {if(seen.has(item.title)) return false; seen.add(item.title); return true;}).slice(0,20);
+const cnSnapshot = { updatedAt: new Date().toISOString(), status: "今日定时更新（政策线索保留原发布时间）", items: combined };
 const existingMarkets = existing.markets || (existing.items?.length ? { cn: { updatedAt: existing.updatedAt, status: existing.status, items: existing.items } } : {});
 const payload = { ...cnSnapshot, schemaVersion: 2, markets: { ...existingMarkets, cn: cnSnapshot } };
 await writeFile(output, `${JSON.stringify(payload, null, 2)}\n`);

@@ -48,6 +48,7 @@ function applyCurrentSnapshot(){
   assets=snapshot.items.map(x=>[String(x.symbol||""),x.name||"未命名",Number(x.finalScore||0),x.decision||"观察",Number(x.v5FinalScore||0),x.v5Decision||"观察",Number(x.v5MomentumScore??x.momentumScore??0),Number(x.v5DrawdownScore??x.drawdownScore??0),Number(x.v5StrengthScore??x.strengthScore??0)]);
   marketMeta={...snapshot,status:"本地自动同步"};
   const marketNews=newsByMarket[activeMarket];
+  news=marketNews?.items||[];
   if(marketNews?.items?.length){news=marketNews.items;newsMeta={updatedAt:marketNews.updatedAt,status:marketNews.status||"本地自动同步"}}
   const footer=document.querySelector("footer");
   if(footer)footer.textContent=`数据快照：${String(marketMeta.updatedAt).slice(0,10)} · ${marketLabels[activeMarket]||activeMarket} · 本地自动同步 · V5 尚未经过实盘验证`;
@@ -60,7 +61,7 @@ const renderers={
   reports:()=>`<div class="stack"><section class="panel page-head report-head"><div><p class="eyebrow">RESEARCH LIBRARY</p><h1>研报中心</h1><p class="muted">基金与股票研究简报统一归档，点击卡片可在新窗口阅读全文。</p></div><div class="report-stats"><span><strong>9</strong><small>份研报</small></span><span><strong>4</strong><small>只基金</small></span><span><strong>5</strong><small>只股票</small></span></div></section>${reportGroup("基金研报","FUNDS / 4",reports.filter(x=>x[2]==="基金研报"))}${reportGroup("股票研报","STOCKS / 5",reports.filter(x=>x[2]==="股票研报"))}</div>`,
   formula:()=>`<div class="stack"><section class="panel page-head"><div><p class="eyebrow">SCORING MODEL</p><h1>评分机制</h1><p class="muted">V4 正式对照，V5 实验观察。评分仅用于研究，不构成投资建议。</p></div><div class="news-stat accent"><strong>55</strong><span>V5 入选线</span><small>实验版</small></div></section><section class="formula-grid">${[["01","动量","最近 5 个交易日的 20 日收益率均值，转换为候选池内百分位。","45%"],["02","回撤","最近 5 个交易日距 20 日高点回撤均值，回撤越小得分越高。","30%"],["03","强度","10 日趋势相对 20 日趋势的增强程度，经 5 日平滑后计算百分位。","25%"]].map(x=>`<article class="panel formula"><span>${x[0]}</span><b>${x[3]}</b><h2>${x[1]}</h2><p>${x[2]}</p></article>`).join("")}</section></div>`
 };
-function show(tab){document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));content.innerHTML=renderers[tab]();window.scrollTo({top:0,behavior:"smooth"});}
+function show(tab){document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x.dataset.tab===tab));if(tab==="overview"||tab==="pool"){content.innerHTML=`<div class="stack">${snapshotControls()}<div id="publicResearch"></div></div>`;Research.mount(document.querySelector("#publicResearch"),marketMeta,news);}else{content.innerHTML=renderers[tab]();}window.scrollTo({top:0,behavior:"smooth"});}
 document.querySelectorAll("[data-tab]").forEach(x=>x.addEventListener("click",()=>show(x.dataset.tab)));
 content.addEventListener("change",event=>{
   if(event.target.matches("[data-snapshot-market]")){activeMarket=event.target.value;activePreset=availablePresets(activeMarket).includes("balanced")?"balanced":availablePresets(activeMarket)[0]}
@@ -77,5 +78,5 @@ fetch("./data/market.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.rej
     if(document.querySelector('[data-tab="pool"].active'))show("pool");
   }
 }).catch(()=>{});
-fetch("./data/news.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{newsByMarket=data.markets||{cn:data};const selected=newsByMarket[activeMarket]||data;if(selected.items?.length)news=selected.items;newsMeta={updatedAt:selected.updatedAt,status:selected.status||"定时更新"};if(document.querySelector('[data-tab="news"].active'))show("news");}).catch(()=>{});
+fetch("./data/news.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{newsByMarket=data.markets||{cn:data};const selected=newsByMarket[activeMarket]||{};news=selected.items||[];newsMeta={updatedAt:selected.updatedAt,status:selected.status||"定时更新"};const active=document.querySelector('[data-tab].active')?.dataset.tab||"overview";if(["news","overview","pool"].includes(active))show(active);}).catch(()=>{});
 show("overview");

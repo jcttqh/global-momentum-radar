@@ -28,7 +28,8 @@ test("loads the GitHub Pages ranking from the local exported snapshot", async ()
   assert.match(app, /data\/market\.json/);
   assert.equal(payload.market, "cn");
   assert.equal(payload.preset, "balanced");
-  assert.equal(payload.items.length, 11);
+  assert.ok(payload.items.length >= 20);
+  assert.ok(payload.items.every(item => item.priceDate && item.sector));
   assert.equal(payload.schemaVersion, 2);
   assert.ok(payload.snapshots["cn:balanced"]);
   assert.ok(payload.snapshots["hk:balanced"]);
