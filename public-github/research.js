@@ -48,11 +48,25 @@
   function mount(element,snapshot,news) {
     if(!element)return;
     element.innerHTML=render(snapshot,news);
+    const oldDetails=element.querySelector("details");
+    if(oldDetails) oldDetails.innerHTML='<summary>信息接入与使用边界</summary><p>A股优先使用腾讯前复权日线，失败回退新浪原始价格。复权未确认的标的不参加V6评分；每行可查看口径。V4.1已剔除缺失真实净值时的溢价权重并重新归一，其余因子和前6入选规则保持不变；V5仍为池内相对评分，不代表绝对上涨。</p><p>量比不等于资金净流入。真实IOPV、申赎份额、估值分位尚未接入；缺失项不加分。V6参数为固定实验规则，尚无样本外回测结果。扩池、复权与算法修订后的分数不可直接和旧快照比较。</p>';
+    const block=element.querySelector('.research-block');
+    if(block) block.insertAdjacentHTML('afterbegin',v6Panel(snapshot));
+    const sorter=element.querySelector('[data-research-sort]');
+    if(sorter){sorter.insertAdjacentHTML('afterbegin','<option value="v6FinalScore">V6 绝对评分（实验）</option>');sorter.value='v6FinalScore';}
     const target=element.querySelector(".research-table");
     if(!target)return;
-    const update=()=>{target.innerHTML=table(snapshot,element.querySelector("[data-research-sort]").value,element.querySelector("[data-research-sector]").value);};
+    const update=()=>{const sort=element.querySelector("[data-research-sort]").value;const sector=element.querySelector("[data-research-sector]").value;target.innerHTML=sort==='v6FinalScore'?v6Table(snapshot,sector):table(snapshot,sort,sector);};
     element.querySelectorAll("select").forEach(x=>x.addEventListener("change",update));update();
   }
-  root.Research={mount,analyze,metric,table,render};
+  function v6Panel(snapshot){
+    const items=snapshot.items||[], valid=items.filter(x=>numeric(x.v6FinalScore)), passed=valid.filter(x=>x.v6Decision==='通过观察');
+    return `<div class="research-advice"><h2>V6 实验观察 · 高分不等于通过</h2><p>可评分 ${valid.length}/${items.length} 个 · 通过趋势与风险门槛 ${passed.length} 个 · ${passed.length?'逐项核实后继续观察':'暂无合格标的，不强制入选'}</p><p>默认按V6排序，原V4/V5可切换对照。权重选择仅影响V4/V5，V6固定参数避免随意调参。</p><details><summary>查看V6公式、过滤条件与验证状态</summary><p>趋势质量35% + 风险调整强度35% + 风险控制30%。趋势分 = [截断(50+2×20日收益率%) + 截断(50+60日收益率%)]/2；强度分 = 截断(50+10×60日日收益均值/标准差×√252)；风险分 = [截断(100−1.5×年化波动率%) + 截断(100−4×60日最大回撤%)]/2。截断范围均为0–100。强度未扣无风险收益，不是标准夏普比率。</p><p>通过条件：20日及60日收益均为正、收盘价高于60日均线、60日最大回撤≤15%、年化波动≤45%。至少121个有效交易日、已确认前复权、价格不超过5个自然日。连续通过天数只回看最近5个交易日；并非历史实盘记录。</p><p>V6尚未完成含费用、滑点和样本外的回测，不能声称优于V5。行业重叠提示只是同标签检查，不是精确持仓相关性。政策不参与数值加分，避免新闻热度重复计分。</p></details></div>`;
+  }
+  function v6Table(snapshot,sector=''){
+    const items=[...(snapshot.items||[])].filter(x=>!sector||(x.sector||'未分类')===sector).sort((a,b)=>(numeric(b.v6FinalScore)?Number(b.v6FinalScore):-1)-(numeric(a.v6FinalScore)?Number(a.v6FinalScore):-1)).slice(0,20);
+    return `<table><thead><tr>${['标的 / 行业','V6 / 条件','V4.1 / V5','60日涨幅','年化波动','60日最大回撤','连续通过','口径 / 日期','依据与同类重叠'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.name)}<small>${esc(x.symbol)} · ${esc(x.sector||'未分类')}</small></td><td>${num(x.v6FinalScore)}<small>${esc(x.v6Decision||'需更新')}</small></td><td>${num(x.finalScore)} / ${num(x.v5FinalScore)}</td><td>${pct(x.v6Return60d)}</td><td>${pct(x.v6Volatility)}</td><td>${pct(x.v6MaxDrawdown)}</td><td>${Number(x.v6StableDays||0)}/5日</td><td>${x.priceAdjustment==='qfq'?'前复权':'未确认'}<small>${esc(x.priceDate||'未知')}</small></td><td>${esc((x.v6Reasons||['请更新行情']).join('；'))}${x.v6Overlap?`<small>同类已有：${esc(x.v6Overlap)}，不要视为独立分散</small>`:''}</td></tr>`).join('')}</tbody></table><p class="research-note">V6分数不随候选池百分位变化；通过条件独立于分数，不设置保底入选数。缺失分数排在最后，可通过行业筛选查看。</p>`;
+  }
+  root.Research={mount,analyze,metric,table,render,v6Panel,v6Table};
   if(typeof module!=="undefined")module.exports=root.Research;
 })(globalThis);
